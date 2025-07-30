@@ -15,23 +15,28 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import axios from 'axios'
+    import { ref } from 'vue'
 
-const email = ref('')
-const password = ref('')
-const error = ref('')
+    const email = ref('')
+    const password = ref('')
+    const error = ref('')
 
-const login = async () => {
-  try {
-    const response = await axios.post('http://localhost:5004/api/auth/login', {
-      email: email.value,
-      password: password.value
-    })
-    console.log('Login successful:', response.data)
-    error.value = ''
-  } catch (err) {
-    error.value = 'Login failed. Please check your credentials.'
-  }
-}
+    const login = async () => {
+        try {
+            const { data, error } = await useFetch('http://localhost:5004/api/auth/login', {
+                method: 'POST',
+                body: {
+                    email: email.value,
+                    password: password.value
+                }
+            });
+            debugger;
+            if (error.value) throw error.value;
+
+            localStorage.setItem('access_token', data.value.data);
+
+        } catch (err) {
+            error.value = 'Login failed. Please check your credentials.'
+        }
+    }
 </script>

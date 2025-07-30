@@ -6,6 +6,7 @@ using PawnShop.App.Models;
 using System.IdentityModel.Tokens.Jwt;
 using Microsoft.IdentityModel.Tokens;
 using PawnShop.App.Common.Dtos;
+using PawnShop.App.Common.Statics;
 
 namespace PawnShop.App.Controllers
 {
@@ -23,42 +24,56 @@ namespace PawnShop.App.Controllers
         }
 
         [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] RegisterDto model)
+        public async Task<IActionResult> Register([FromBody] RegisterDto modelDto)
         {
-            var user = new ApplicationUser { UserName = model.Phone, Email = model.Phone };
-            var result = await _userManager.CreateAsync(user, model.Password);
+            var user = new ApplicationUser { UserName = modelDto.Phone, Email = modelDto.Phone };
+            var result = await _userManager.CreateAsync(user, modelDto.Password);
 
             if (result.Succeeded)
             {
-                await _signInManager.SignInAsync(user, isPersistent: false);
+                await _userManager.AddToRoleAsync(user, AppRoles.Customer);
+                await _userManager.AddClaimAsync(user, new Claim("RegisteredAt", DateTime.UtcNow.ToString("o")));
+                await _userManager.AddClaimAsync(user, new Claim("AccessLevel", "Basic"));
                 return ApiOk("User registered successfully");
             }
             var errors = result.Errors.Select(e => e.Description).ToList();
             return ApiError("Registration failed", errors);
         }
 
+
         [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] LoginDto model)
+        public async Task<IActionResult> Login([FromBody] LoginDto modelDto)
         {
-            var result = await _signInManager.PasswordSignInAsync(model.Email, model.Password, false, false);
+            var user = await _userManager.FindByEmailAsync(modelDto.Email);
+            if (user == null)
+                return ApiUnauthorized("کاربری با این ایمیل پیدا نشد.");
 
-            if (result.Succeeded)
-            {
-                var user = await _userManager.FindByEmailAsync(model.Email);
-                var token = GenerateJwtToken(user);
-                return ApiOk(token, "Login successful");
-            }
+            var isPasswordValid = await _userManager.CheckPasswordAsync(user, modelDto.Password);
+            if (!isPasswordValid)
+                return ApiUnauthorized("رمز عبور اشتباه است.");
 
-            return ApiUnauthorized("Invalid login attempt", new List<string> { "Incorrect email or password" });
+            var token = await GenerateJwtToken(user);
+            return ApiOk(token, "Login successful");
         }
 
-        private string GenerateJwtToken(ApplicationUser user)
+        private async Task<string> GenerateJwtToken(ApplicationUser user)
         {
-            var claims = new[]
+            var roles = await _userManager.GetRolesAsync(user);
+            var userClaims = await _userManager.GetClaimsAsync(user);
+
+            var claims = new List<Claim>
             {
-                new Claim(JwtRegisteredClaimNames.Sub, user.Email),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-            };
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new Claim(ClaimTypes.NameIdentifier, user.Id),
+                new Claim(ClaimTypes.Name, user.UserName),
+            }
+            ;
+
+            foreach (var role in roles)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, role));
+            }
+            claims.AddRange(userClaims);
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
