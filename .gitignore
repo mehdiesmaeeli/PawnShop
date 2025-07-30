@@ -1,0 +1,13 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+/Host/website/.output
+/Host/website/.vs
+/Host/website/node_modules
+/WebApi/PawnShop.App/.vs
+/WebApi/PawnShop.App/bin/Debug/net8.0
+/WebApi/PawnShop.App/obj
+/WebApi/CodeGenerator/obj
+/WebApi/.vs/PawnShop.App
+/Host/website/.nuxt
