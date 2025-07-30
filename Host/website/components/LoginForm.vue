@@ -2,7 +2,7 @@
     <div class="max-w-md mx-auto">
         <h2 class="text-2xl font-semibold mb-4">Login</h2>
         <div class="mb-4">
-            <label for="email" class="block text-sm font-medium">Email</label>
+            <label for="email" class="block text-sm font-medium">Phone</label>
             <input v-model="email" type="email" id="email" class="w-full p-2 border rounded" />
         </div>
         <div class="mb-4">
